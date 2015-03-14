@@ -17,37 +17,17 @@ public:
     {
     }
 
-    LongMath(std::string const & str)
+    LongMath(std::string const & val)
     {
-        if (str.empty())
-            return;
-
-        auto it = str.rbegin();
-        auto it_end = str.rend();
-        
-        if (str[0] == '-')
-        {
-            sign = Sign::NEG;
-            it_end--;
-        }
-        else
-        {
-            sign = Sign::POS;
-        }
-
-        for (; it != it_end; ++it)
-        {
-            value.push_back(*it - 48);
-        }
-            
+        setFromString(val);
     }
 
-    explicit LongMath(int v)
+    LongMath(int val)
     {
-        setFromInt(v);
+        setFromInt(val);
     }
 
-     bool operator== (const LongMath & long_math) const
+    bool operator== (const LongMath & long_math) const
     {    
         if (sign != long_math.sign)
             return false;
@@ -75,7 +55,7 @@ public:
             auto left  = (i<size_l) ? new_lm.value[i] : 0;
             auto right = (i<size_r) ? lm.value[i] : 0; 
             
-            div_t result  = div(lift + right + carry, 10 );
+            div_t result  = div(left + right + carry, 10 );
                     
             if (i < size_l)
             {
@@ -92,14 +72,16 @@ public:
         return new_lm;    
     }
 
+    bool isNegative() const { return sign == Sign::NEG; }
+
     friend std::ostream & operator<<(std::ostream &, LongMath const &);
 
 private:
-    void setFromInt(int v)
+    void setFromInt(int val)
     {
-        if (v < 0)
+        if (val < 0)
         {
-            v=-v;
+            val=-val;
             sign = Sign::NEG;
         }
         else
@@ -107,13 +89,37 @@ private:
             sign = Sign::POS;
         }
             
-        div_t result = div( v, 10 );
+        div_t result = div(val, 10);
         int i = 0;
         
         while(result.quot != 0 || result.rem != 0)
         {
             value.push_back(result.rem);
             result = div(result.quot, 10);
+        }
+    }
+
+    void setFromString(std::string const & val)
+    {
+        if (val.empty())
+            return;
+
+        auto it = val.rbegin();
+        auto it_end = val.rend();
+        
+        if (val[0] == '-')
+        {
+            sign = Sign::NEG;
+            it_end--;
+        }
+        else
+        {
+            sign = Sign::POS;
+        }
+
+        for (; it != it_end; ++it)
+        {
+            value.push_back(*it - 48);
         }
     }
 

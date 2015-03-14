@@ -35,6 +35,7 @@ TEST(LongMath, InitTwoDigitNegativeValue)
 {
     LongMath l(-12);
     EXPECT_EQ(l, -12);
+    EXPECT_TRUE(l.isNegative());
 }
 
 TEST(LongMath, Dump)
@@ -60,8 +61,6 @@ TEST(LongMath, TwoDigitAddition)
     LongMath l(2), k(199);
 
     EXPECT_EQ(l+k, 201); 
-    
-    std::cout << "L+K=" << l+k << std::endl;
 }
 
 TEST(LongMath, InitFromString)
