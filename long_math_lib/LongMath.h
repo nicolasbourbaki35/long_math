@@ -47,8 +47,12 @@ public:
 
     bool isNegative() const { return sign == Sign::NEG; }
 
+    void opposite() { sign = (sign == Sign::NEG) ? Sign::POS : Sign::NEG; }
+
     friend std::ostream & operator<<(std::ostream &, LongMath const &);
 
+    LongMath & shift(int power);
+    LongMath splitAndSum(size_t min_index, size_t index, size_t max_index) const;
 
 private:
     LongMath operator* (int right_factor) const;
@@ -56,8 +60,9 @@ private:
     LongMath karatsubaMultiplication(const LongMath & left_factor, const LongMath & right_factor) const;
     LongMath standardMultiplication(const LongMath & left_factor, const LongMath & right_factor) const;
 
-    LongMath & shift(int power);
-    LongMath splitAt(size_t index) const;
+    LongMath karatsubaRecursive(const LongMath & left_factor, size_t left_min_index, size_t left_max_index,
+                                const LongMath & right_factor, size_t right_min_index, size_t right_max_index) const;
+
 
     void setFromInt(int val);
     void setFromString(std::string const & val);
