@@ -1,5 +1,5 @@
-#ifndef _POLINOMIAL_H_
-#define _POLINOMIAL_H_
+#ifndef _POLYNOMIAL_H_
+#define _POLYNOMIAL_H_
 
 #include <complex>
 #include <vector>
