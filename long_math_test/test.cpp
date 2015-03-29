@@ -85,6 +85,6 @@ TEST(LongMath, ReallyLong)
         res = res + l;
     }
     
-    std::cout << "res=[" << res << "]"  << std::endl;
+//    std::cout << "res=[" << res << "]"  << std::endl;
 }    
 
