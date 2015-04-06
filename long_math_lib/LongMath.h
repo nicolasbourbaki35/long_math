@@ -50,7 +50,7 @@ public:
         auto max_size = std::max(size_l, size_r);
         int carry = 0;
         
-        for (auto i = 0; i<max_size || carry>0; ++i)
+        for (size_t i = 0; i<max_size || carry>0; ++i)
         {
             auto left  = (i<size_l) ? new_lm.value[i] : 0;
             auto right = (i<size_r) ? lm.value[i] : 0; 
@@ -90,7 +90,6 @@ private:
         }
             
         div_t result = div(val, 10);
-        int i = 0;
         
         while(result.quot != 0 || result.rem != 0)
         {

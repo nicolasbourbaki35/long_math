@@ -8,7 +8,8 @@
 #include <bitset>
 
 /*
- * Not effective bit reverse algorithm. Needed by iterative FFT.
+ * Not very effective bit reverse algorithm. Needed by iterative FFT.
+ * TODO: replace with bitwise operations
  */
 inline size_t bit_reverse(size_t i, size_t n)
 {
@@ -18,7 +19,7 @@ inline size_t bit_reverse(size_t i, size_t n)
     std::bitset<sizeof(size_t)> b(i);
     size_t N = ceil(log2(n));
     
-    for(int i = 0; i<N/2; ++i)
+    for(size_t i = 0; i<N/2; ++i)
     {
         bool tmp_bit = b[i];
         b[i] = b[N-i-1];     
@@ -28,15 +29,19 @@ inline size_t bit_reverse(size_t i, size_t n)
     return b.to_ulong();
 }
 
-
+/*
+ *
+ */
 template<typename CoefType>
 class Polynomial
 {
 public:
     using CoefVector    = std::vector<CoefType>;
     using CoefVectorIt  = typename CoefVector::const_iterator;
+    using Complex       = std::complex<double>;
+    using ComplexVector = std::vector<Complex>;
     //to be compatible with std containers
-    using value_type = CoefType;
+    using value_type    = CoefType;
 
     Polynomial(std::initializer_list<CoefType> l) 
         : m_coef(l) 
@@ -57,7 +62,7 @@ public:
 
     Polynomial(Polynomial && p)
     {
-	    m_coef = p.m_coef;
+        m_coef = p.m_coef;
         p.m_coef.clear();
     }
 
@@ -66,9 +71,7 @@ public:
     
     CoefType  const & operator[](size_t index) const { return m_coef.at(index); } 
 
-    /*
-     * Multiply by -1
-     */
+    // Multiply by -1
     void negate()
     {
         std::for_each(m_coef.begin(), m_coef.end(), [] (CoefType & c) { c=-c; } );
@@ -118,7 +121,8 @@ public:
 
     void operator*=(const Polynomial & p)
     {
-        naive_multiplication(p);
+        //naive_multiplication(p);
+        FFT_multiplication(p);
     }
     
     Polynomial operator* (const Polynomial & p) const
@@ -133,57 +137,88 @@ public:
         return std::equal(m_coef.cbegin(), m_coef.cend(), p.m_coef.cbegin());
     }
     
-    /*
-     * Returns Fourier transformation (2^k points).
-     * 2^k is a closest power of 2 greater than polynomial size.
-     */
-    template<typename T>
-    std::vector<std::complex<T> > FFT() const
-    {
-        std::vector<std::complex<T>> A;
-        
-        // copy because function is const and we need to add high order 0 coefficients
-        // in order to have 2^k coefficients
-        Polynomial<CoefType> tmp = *this;
-        
-        size_t n = 1;
-        while (n < tmp.size())
-            n = n << 1;
-        tmp.resize(n);
-
-        A.resize(n);
-    
-        for (size_t i=0; i<n; ++i)
-            A[i] = tmp.m_coef[bit_reverse(i,n)];
-        
-        for (size_t s=1; s<log2(n); ++s)
-        {
-            size_t m = 1 << s; 
-
-            std::complex<T> omega_m = std::exp(std::complex<T>(0, 2 * M_PI / m));
-            
-            for (size_t k=0; k<n; k+=m)
-            {
-                std::complex<T> omega = std::complex<T>(1,0);
-                for(size_t j=0; j<m/2; ++j)
-                {
-                    std::complex<T> t = omega * A[k+j+m/2];         
-                    std::complex<T> u = A[k+j];
-                    A[k+j]     = u + t;
-                    A[k+j+m/2] = u - t;
-                    omega *= omega_m;
-                }   
-            }
-        }   
-        
-        return A;
-    }
-
     template<typename T>
     friend std::ostream & operator<<(std::ostream &, Polynomial<T> const &);
 
+    /*
+     * Naive polynomial multiplication O(N^2)
+     */
+    void naive_multiplication(const Polynomial<CoefType> & p)
+    {
+        CoefVector tmp_coefs;
+    
+        size_t l_size = m_coef.size();
+        size_t r_size = p.m_coef.size();
+    
+        for(size_t i=0; i<l_size+r_size-1; ++i)
+        {  
+            double coef = 0;
+            
+            for (size_t j=0; j<i+1; ++j)
+            {
+                if (i-j<l_size && j<r_size)
+                {
+                    coef += m_coef[i-j] * p.m_coef[j];
+                }
+            }
+    
+            tmp_coefs.push_back(coef);
+        }
+    
+        m_coef.swap(tmp_coefs);
+    }    
+
+    /*
+     * Multiplication based on Fast Fourier transfomation O(N*log(N))
+     */
+    void FFT_multiplication(const Polynomial<CoefType> & p)
+    {
+        size_t result_size = m_coef.size() + p.size();
+        
+        // Resize in order to have 2^k points 
+        size_t n = 1;
+        while (n < result_size)
+            n = n << 1;
+ 
+        ComplexVector input1 = get_coef_as_complex();
+        ComplexVector input2 = p.get_coef_as_complex();
+        
+        input1.resize(n);
+        input2.resize(n);
+
+        ComplexVector fft1 = FFT(input1);
+        ComplexVector fft2 = FFT(input2);
+
+        // pointwse multiplication
+        for(auto i = 0u; i<n; ++i)
+        {
+            fft1[i] *= fft2[i];
+        }
+        
+        // inverse FFT
+        fft2 = FFT(fft1, true);
+        
+        m_coef.clear();
+        for(auto c : fft2)
+        {
+            m_coef.push_back(c.real());
+        }
+    }
+
+
 private:
     
+    /*
+     * returns coeficients as a vector of complex numbers
+     */
+    ComplexVector get_coef_as_complex() const
+    {
+        ComplexVector v;
+        for(auto c : m_coef) 
+            v.push_back(Complex(c,0));
+        return v;
+    }
+
     /*
      * Horner's recursive method for calculating polynomial
      */
@@ -210,33 +245,43 @@ private:
         return res;
     }
 
-    /*
-     * Naive polynomial multiplication O(N^2)
-     */
-    void naive_multiplication(const Polynomial<CoefType> & p)
+    ComplexVector FFT(ComplexVector const & input, bool inverse = false)
     {
-        CoefVector tmp_coefs;
+        size_t N = input.size();
+        ComplexVector A;
+        A.resize(N);
     
-        size_t l_size = m_coef.size();
-        size_t r_size = p.m_coef.size();
-    
-        for(int i=0; i<l_size+r_size-1; ++i)
-        {  
-            double coef = 0;
+        for (size_t i=0; i<N; ++i)
+            A[i] = input[bit_reverse(i,N)];
+        
+        for (size_t s=1; s<=log2(N); ++s)
+        {
+            size_t m = 1 << s; 
+
+            double theta =  (inverse ? -1 : 1) * 2 * M_PI / m;
+            Complex omega_m = Complex(cos(theta), sin(theta));
             
-            for (int j=0; j<i+1; ++j)
+            for (size_t k=0; k<N; k+=m)
             {
-                if (i-j<l_size && j<r_size)
+                Complex omega = 1;
+                for(size_t j=0; j<m/2; ++j)
                 {
-                    coef += m_coef[i-j] * p.m_coef[j];
+                    Complex t = omega * A[k+j+m/2];         
+                    Complex u = A[k+j];
+                    A[k+j]     = u + t;
+                    A[k+j+m/2] = u - t;
+                    omega *= omega_m;
                 }
             }
-    
-            tmp_coefs.push_back(coef);
         }
-    
-        m_coef.swap(tmp_coefs);
-    }    
+
+        if (inverse)
+        {
+            std::for_each(A.begin(), A.end(), [&] (Complex & c) { c/=N; } );
+        }
+        
+        return A;
+    }
 
 private:
     CoefVector m_coef;

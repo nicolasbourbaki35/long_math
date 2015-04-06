@@ -6,55 +6,59 @@
 using DoublePolynomial = Polynomial<double>;
 using namespace std;
 
-TEST(DoublePolynomial, TestZeroConstant) 
+class PolynomialTestSuite : public ::testing::Test 
+{
+};
+
+TEST_F(PolynomialTestSuite, TestZeroConstant) 
 {
     DoublePolynomial p = {3};
 
-    EXPECT_EQ(p.size(), 1);    
-    EXPECT_EQ(p(1), 3);    
-    EXPECT_EQ(p(3), 3);
+    EXPECT_EQ(1u, p.size());    
+    EXPECT_EQ(3, p(1));    
+    EXPECT_EQ(3, p(3));
 }
 
-TEST(DoublePolynomial, TestLinear)
+TEST_F(PolynomialTestSuite, TestLinear)
 {
     // y(x) = 1 - 3x
     DoublePolynomial p = {1, -3};
 
-    EXPECT_EQ(p.size(), 2);    
-    EXPECT_EQ(p(1), -2);    
-    EXPECT_EQ(p(3), -8);
+    EXPECT_EQ(2u, p.size());    
+    EXPECT_EQ(-2, p(1));    
+    EXPECT_EQ(-8, p(3));
 }
 
-TEST(DoublePolynomial, TestComplexConstant)
+TEST_F(PolynomialTestSuite, TestComplexConstant)
 {
     DoublePolynomial p = {1};
     std::complex<double> x(-1,3);
 
-    EXPECT_EQ(p.size(), 1);    
-    EXPECT_EQ(p(x), std::complex<double>(1,0)); 
+    EXPECT_EQ(1u, p.size());    
+    EXPECT_EQ(std::complex<double>(1,0), p(x)); 
 }
 
-TEST(DoublePolynomial, TestComplexLinear)
+TEST_F(PolynomialTestSuite, TestComplexLinear)
 {
     // y(x) = 1 + 3x
     DoublePolynomial p = {1, 3};
     std::complex<double> x(-1,3);
 
-    EXPECT_EQ(p.size(), 2);    
-    EXPECT_EQ(p(x), std::complex<double>(-2,9)); 
+    EXPECT_EQ(2u, p.size());    
+    EXPECT_EQ(std::complex<double>(-2,9), p(x)); 
 }
 
-TEST(DoublePolynomial, TestComplexSquare)
+TEST_F(PolynomialTestSuite, TestComplexSquare)
 {
     // y(x) = 1 + 3x + x^2
     DoublePolynomial p = {1, 3, 1};
     std::complex<double> x(-1,3);
 
-    EXPECT_EQ(p.size(), 3);    
-    EXPECT_EQ(p(x), std::complex<double>(-10,3)); 
+    EXPECT_EQ(3u, p.size());    
+    EXPECT_EQ(std::complex<double>(-10,3), p(x)); 
 }
 
-TEST(DoublePolynomial, Sum)
+TEST_F(PolynomialTestSuite, Sum)
 {
     DoublePolynomial p1 = { 1, 3 ,  1 };
     DoublePolynomial p2 = {-1, 8 , -15};
@@ -64,64 +68,71 @@ TEST(DoublePolynomial, Sum)
     std::cout << p2 << std::endl;
     std::cout << r << std::endl;
 
-    EXPECT_EQ(p1+p2, r); 
+    EXPECT_EQ(r, p1+p2); 
 }
 
-TEST(DoublePolynomial, Mult1)
+void test_mult(DoublePolynomial const & p1, DoublePolynomial const & p2, DoublePolynomial const & expected)
 {
-    DoublePolynomial p1 = { 1 };
-    DoublePolynomial p2 = { 8 };
-    DoublePolynomial r  = { 8};
+    DoublePolynomial naive_mult = p1;
+    DoublePolynomial fft_mult   = p1;
 
-    EXPECT_EQ(p1*p2, r); 
+    naive_mult.naive_multiplication(p2);
+    fft_mult.FFT_multiplication(p2);
+
+    EXPECT_EQ(expected, naive_mult);
+    EXPECT_EQ(expected, fft_mult);
 }
 
-TEST(DoublePolynomial, Mult2)
+TEST_F(PolynomialTestSuite, Mult1)
+{
+    DoublePolynomial p1  = { 8 };
+    DoublePolynomial p2  = { 1 };
+    DoublePolynomial r   = { 8 };
+    test_mult (p1 ,p2, r);
+}
+
+TEST_F(PolynomialTestSuite, Mult2)
 {
     DoublePolynomial p1 = { 1, 2 };
     DoublePolynomial p2 = { 1, 2 };
     DoublePolynomial r  = { 1, 4, 4};
-    
-    p1*=p2;
-
-    EXPECT_EQ(p1, r); 
+    test_mult (p1 ,p2, r);
 }
 
 
-TEST(DoublePolynomial, Mult3)
+TEST_F(PolynomialTestSuite, Mult3)
 {
     DoublePolynomial p1 = { 1, -2, -19 };
     DoublePolynomial p2 = { 1 };
     DoublePolynomial r  = { 1, -2, -19};
-
-    EXPECT_EQ(p1*p2, r); 
+    test_mult (p1 ,p2, r);
 }
 
-TEST(DoublePolynomial, Negate)
+TEST_F(PolynomialTestSuite, Negate)
 {
     DoublePolynomial p = { 1, -2, -19 };
     DoublePolynomial r = {-1,  2,  19 };
     p.negate();    
 
-    EXPECT_EQ(p, r); 
+    EXPECT_EQ(r, p); 
 }
 
-TEST(DoublePolynomial, difference1)
+TEST_F(PolynomialTestSuite, difference1)
 {
     DoublePolynomial p1 = { 1, -2, -19 };
     DoublePolynomial p2 = {-1,  2,  19 };
     DoublePolynomial r  = { 2, -4, -38 };
 
-    EXPECT_EQ(p1-p2, r); 
+    EXPECT_EQ(r, p1-p2); 
 }
 
-TEST(DoublePolynomial, IndexOperator)
+TEST_F(PolynomialTestSuite, IndexOperator)
 {
     DoublePolynomial p = { 1, -2, -19 };
     
-    EXPECT_EQ(p[0],  1 );
-    EXPECT_EQ(p[1], -2 );
-    EXPECT_EQ(p[2], -19);
+    EXPECT_EQ( 1 , p[0]);
+    EXPECT_EQ(-2 , p[1]);
+    EXPECT_EQ(-19, p[2]);
 
     EXPECT_THROW(p[3], std::out_of_range);
     
@@ -129,41 +140,18 @@ TEST(DoublePolynomial, IndexOperator)
 
     EXPECT_EQ(p[3], 0);
     EXPECT_THROW(p[4], std::out_of_range);
-    EXPECT_EQ(p.size(), 4);
+    EXPECT_EQ(4u, p.size());
 }
 
-TEST(DoublePolynomial, BitReverse)
+TEST_F(PolynomialTestSuite, BitReverse)
 {
-    EXPECT_EQ(0, bit_reverse(0, 8));
-    EXPECT_EQ(4, bit_reverse(1, 8));
-    EXPECT_EQ(2, bit_reverse(2, 8));
-    EXPECT_EQ(6, bit_reverse(3, 8));
-    EXPECT_EQ(1, bit_reverse(4, 8));
-    EXPECT_EQ(5, bit_reverse(5, 8));
-    EXPECT_EQ(3, bit_reverse(6, 8));
-    EXPECT_EQ(7, bit_reverse(7, 8));
+    EXPECT_EQ(0u, bit_reverse(0, 8));
+    EXPECT_EQ(4u, bit_reverse(1, 8));
+    EXPECT_EQ(2u, bit_reverse(2, 8));
+    EXPECT_EQ(6u, bit_reverse(3, 8));
+    EXPECT_EQ(1u, bit_reverse(4, 8));
+    EXPECT_EQ(5u, bit_reverse(5, 8));
+    EXPECT_EQ(3u, bit_reverse(6, 8));
+    EXPECT_EQ(7u, bit_reverse(7, 8));
 }
  
-TEST(DoublePolynomial, FFT)
-{
-    Polynomial<double> p = {0, 18, -15, 3};
-    
-    vector<complex<double> > dft = p.FFT<double>();
-
-    vector<complex<double> > res = 
-        {   complex<double>( 6 , 0 ), 
-            complex<double>( 15, 15), 
-            complex<double>(-36, 0 ), 
-            complex<double>( 15,-15)    };
-    
-    EXPECT_EQ(dft.size(), 4);
-    
-    for(int i=0; i< dft.size();++i)
-    {
-        /*EXPECT_FLOAT_EQ(dft[i].real(), res[i].real());
-        EXPECT_FLOAT_EQ(dft[i].imag(), res[i].imag());*/
-        cout << dft[i] << endl;
-    }  
-
-}
-
