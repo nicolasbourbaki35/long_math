@@ -6,6 +6,7 @@
 #include <initializer_list>
 #include <algorithm>
 #include <bitset>
+#include <stdexcept>
 
 /*
  * Not very effective bit reverse algorithm. Needed by iterative FFT.
@@ -57,7 +58,7 @@ public:
 
     void operator=(Polynomial & p)
     {
-	    m_coef = p.m_coef;
+        m_coef = p.m_coef;
     }
 
     Polynomial(Polynomial && p)
@@ -121,8 +122,14 @@ public:
 
     void operator*=(const Polynomial & p)
     {
-        //naive_multiplication(p);
-        FFT_multiplication(p);
+        /*
+         * If resulted polynomial size is less than 1500, the naive method performs better
+         * 1500 comes from the impirical measurements. See examples/poly_mult_perf
+         */
+        if (p.m_coef.size() + m_coef.size() - 1 < 1500 )
+            naive_multiplication(p);
+        else
+            FFT_multiplication(p);
     }
     
     Polynomial operator* (const Polynomial & p) const
@@ -135,6 +142,11 @@ public:
     bool operator==(const Polynomial & p) const
     {
         return std::equal(m_coef.cbegin(), m_coef.cend(), p.m_coef.cbegin());
+    }
+ 
+    bool operator!=(const Polynomial & p) const
+    {
+        return !(*this==p);
     }
     
     template<typename T>
@@ -203,6 +215,9 @@ public:
         {
             m_coef.push_back(c.real());
         }
+
+        // cut off irrelevant coeficients
+        m_coef.resize(result_size - 1);
     }
 
 

@@ -3,6 +3,20 @@ PROJECT(Template)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8)
 
+#####################################################
+# macros
+#####################################################
+MACRO(SUBDIRLIST result curdir)
+  FILE(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  SET(dirlist "")
+  FOREACH(child ${children})
+    IF(IS_DIRECTORY ${curdir}/${child})
+        LIST(APPEND dirlist ${child})
+    ENDIF()
+  ENDFOREACH()
+  SET(${result} ${dirlist})
+ENDMACRO()
+
 ######################################################
 # Add boost package. 
 #####################################################
@@ -43,4 +57,5 @@ set (CMAKE_CXX_FLAGS "-Wall -std=c++11")
 #####################################################
 ADD_SUBDIRECTORY(long_math_lib)
 ADD_SUBDIRECTORY(long_math_test)
+ADD_SUBDIRECTORY(examples)
 
