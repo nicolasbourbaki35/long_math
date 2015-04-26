@@ -55,6 +55,8 @@ public:
     Polynomial(Polynomial const & p) 
         : m_coef(p.m_coef)   
     {}
+    
+    Polynomial() {}
 
     void operator=(Polynomial & p)
     {
@@ -65,6 +67,13 @@ public:
     {
         m_coef = p.m_coef;
         p.m_coef.clear();
+    }
+
+    template<typename T>
+    void assign(std::vector<T> const & coefs)
+    {
+        m_coef.clear();
+        std::copy(coefs.begin(), coefs.end(), std::back_inserter(m_coef));
     }
 
     size_t size() const   { return m_coef.size(); }
@@ -317,7 +326,7 @@ std::ostream & operator<<(std::ostream & os, Polynomial<T> const & poli)
             os << "+";
         }
         
-        os << *it;
+        os << (double)*it;
         
         if (pow != 0)
         {

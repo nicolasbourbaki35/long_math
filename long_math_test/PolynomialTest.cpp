@@ -79,8 +79,24 @@ void test_mult(DoublePolynomial const & p1, DoublePolynomial const & p2, DoubleP
     naive_mult.naive_multiplication(p2);
     fft_mult.FFT_multiplication(p2);
 
-    EXPECT_EQ(expected, naive_mult);
-    EXPECT_EQ(expected, fft_mult);
+    /*EXPECT_EQ(expected, naive_mult);
+    EXPECT_EQ(expected, fft_mult);*/
+    
+    ASSERT_EQ(expected.size(), naive_mult.size());
+    ASSERT_EQ(expected.size(), fft_mult.size());
+
+    for(size_t i = 0; i< expected.size(); ++i)
+    {
+        SCOPED_TRACE("naive mult failed"); 
+        EXPECT_DOUBLE_EQ (expected[i], naive_mult[i]);
+    }
+  
+    for(size_t i = 0; i< expected.size(); ++i)
+    {
+        SCOPED_TRACE("fft mult failed"); 
+        EXPECT_EQ (round(expected[i]), round(fft_mult[i]));
+    }
+    
 }
 
 TEST_F(PolynomialTestSuite, Mult1)
@@ -141,6 +157,16 @@ TEST_F(PolynomialTestSuite, IndexOperator)
     EXPECT_EQ(p[3], 0);
     EXPECT_THROW(p[4], std::out_of_range);
     EXPECT_EQ(4u, p.size());
+}
+
+TEST_F(PolynomialTestSuite, LongMult)
+{
+    DoublePolynomial p1 { 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2 };
+    DoublePolynomial p2 { 9, 8,7 , 6, 5, 4, 3, 2, 1, 0, 9, 8 };
+    DoublePolynomial r  { 9, 26, 50, 80, 115, 154, 196, 240, 285, 240, 214
+                        , 206, 181, 160, 144, 134, 131, 136, 150, 74, 9, 26, 16};
+    
+    test_mult (p1 ,p2, r);
 }
 
 TEST_F(PolynomialTestSuite, BitReverse)
