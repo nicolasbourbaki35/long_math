@@ -8,11 +8,14 @@ class LongMath
 public:
     typedef std::vector<char> Buffer;
     typedef Buffer::iterator BufferIt;    
+    typedef Buffer::reverse_iterator BufferReverseIt;    
     typedef Buffer::const_iterator BufferConstIt;
     
     enum class Sign : char { POS = '+', NEG='-' };
 
-    LongMath() : sign(Sign::POS)
+    LongMath() 
+        :/* value(1, 0)
+        , */sign(Sign::POS)
     {}
 
     LongMath(Buffer const & buf, Sign const & s = Sign::POS) 
@@ -30,51 +33,52 @@ public:
         setFromString(val);
     }
 
-    LongMath(int val)
+    LongMath(int64_t val)
     {
         setFromInt(val);
     }
+    
+    void setSign(Sign const & s ) { sign = s;    }
+    Sign const & getSign() const  { return sign; }
 
-    bool operator== (const LongMath & long_math) const
+    bool operator== (const LongMath & lm) const
     {   
-        if (isZero() && long_math.isZero())
-            return true; 
-        
-        if (sign != long_math.sign || value.size() != long_math.value.size())
-            return false;
-
-        const auto res = std::mismatch(value.begin(), value.end(), long_math.value.begin());
-        return (res.first == value.end() && res.second == long_math.value.end());
+        return compare(lm) == 0;       
     }
 
-    bool isZero() const 
+    bool operator== (const int & i) const
     {
-        for(auto d : value)
-        {
-            if (d!=0)
-                return false;
-        }
-        return true;       
-    }
-
-    bool operator== (const int & other_value) const
-    {
-        LongMath other(other_value);    
+        LongMath other(i);    
         return (*this) == other;
     }
+    
+    bool operator!= (const LongMath & lm) const
+    {
+        return compare(lm) != 0;
+    }
 
+    bool operator< (const LongMath & lm) const;
+    bool operator> (const LongMath & lm) const;
+ 
     LongMath operator+ (const LongMath & lm) const;
     LongMath operator- (const LongMath & lm) const;
     LongMath operator* (const LongMath & right_factor) const;
+   
+    int8_t compare(const LongMath & lm) const;
+    int8_t absCompare(const LongMath & lm) const;
 
     bool isNegative() const { return sign == Sign::NEG; }
+    bool isZero() const
+    { 
+        auto it =  std::find_if(value.begin(), value.end(), [](char const & d) { return d != 0; });
+        return it == value.end();
+    }
 
     void opposite() { sign = (sign == Sign::NEG) ? Sign::POS : Sign::NEG; }
 
     friend std::ostream & operator<<(std::ostream &, LongMath const &);
 
-    LongMath & shift(int power);
-    LongMath splitAndSum(size_t min_index, size_t index, size_t max_index) const;
+    LongMath operator<<(int power) const;
 
     LongMath operator* (int right_factor) const;
     void strassenMultiplication (const LongMath & right_factor);
@@ -84,7 +88,7 @@ public:
 private:
     LongMath karatsubaRecursive(const LongMath & left_factor, const LongMath & right_factor);
 
-    void setFromInt(int val);
+    void setFromInt(int64_t val);
     void setFromString(std::string const & val);
 
 private:

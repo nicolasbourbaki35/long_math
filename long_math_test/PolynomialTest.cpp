@@ -171,13 +171,13 @@ TEST_F(PolynomialTestSuite, LongMult)
 
 TEST_F(PolynomialTestSuite, BitReverse)
 {
-    EXPECT_EQ(0u, bit_reverse(0, 8));
-    EXPECT_EQ(4u, bit_reverse(1, 8));
-    EXPECT_EQ(2u, bit_reverse(2, 8));
-    EXPECT_EQ(6u, bit_reverse(3, 8));
-    EXPECT_EQ(1u, bit_reverse(4, 8));
-    EXPECT_EQ(5u, bit_reverse(5, 8));
-    EXPECT_EQ(3u, bit_reverse(6, 8));
-    EXPECT_EQ(7u, bit_reverse(7, 8));
+    EXPECT_EQ(0u, bit_reverse(0, 3));
+    EXPECT_EQ(4u, bit_reverse(1, 3));
+    EXPECT_EQ(2u, bit_reverse(2, 3));
+    EXPECT_EQ(6u, bit_reverse(3, 3));
+    EXPECT_EQ(1u, bit_reverse(4, 3));
+    EXPECT_EQ(5u, bit_reverse(5, 3));
+    EXPECT_EQ(3u, bit_reverse(6, 3));
+    EXPECT_EQ(7u, bit_reverse(7, 3));
 }
  

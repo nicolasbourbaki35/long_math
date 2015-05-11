@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <ostream>
 #include <fstream>
+#include <limits>
 
 #include "LongMath.h"
 
@@ -91,6 +92,7 @@ TEST(LongMath, ReallyLong)
 void test_mult(LongMath const & l1, LongMath const &l2, LongMath const & res, const char * scope)
 {
     LongMath r1(l1), r2(l1), r3(l1);
+
     r1.standardMultiplication(l2);
     r2.karatsubaMultiplication(l2);
     r3.strassenMultiplication(l2);
@@ -176,11 +178,21 @@ TEST(LongMath, MultiplyBy111)
     test_mult(left_factor, right_factor, result, "MultiplyByTen");
 }
 
+TEST(LongMath, 2DigitsProduct)
+{
+    LongMath left_factor(47);
+    LongMath right_factor(78);
+    LongMath result(3666);
+
+    test_mult(left_factor, right_factor, result, "2DigitsProduct");
+}
+
+
 TEST(LongMath, 4DigitsProduct)
 {
     LongMath left_factor(1234);
-    LongMath right_factor(9876);
-    LongMath result(12186984);
+    LongMath right_factor(5678);
+    LongMath result(7006652);
 
     test_mult(left_factor, right_factor, result, "4DigitsProduct");
 }
@@ -190,7 +202,7 @@ TEST(LongMath, ShiftBy1)
     LongMath left_factor(12);
     LongMath result(120);
 
-    EXPECT_EQ(left_factor.shift(1), result);
+    EXPECT_EQ(left_factor<<1, result);
 }
 
 TEST(LongMath, ShiftBy4)
@@ -198,32 +210,97 @@ TEST(LongMath, ShiftBy4)
     LongMath left_factor(12);
     LongMath result(120000);
 
-    EXPECT_EQ(left_factor.shift(4), result);
+    EXPECT_EQ(left_factor<<4, result);
 }
 
-TEST(LongMath, SplitAndSumEven)
+TEST(LongMath, Compare)
 {
-    LongMath source(1234);
-    LongMath result(46);
+    LongMath l1(9), l2(2);
+    EXPECT_TRUE(l2 < l1);
+    EXPECT_EQ(l2.compare(l1), -1);
 
-    EXPECT_EQ(source.splitAndSum(0, 1, 3), result);
+    LongMath l3(-9), l4(2);
+    EXPECT_TRUE(l3 < l4);
+    EXPECT_EQ(l3.compare(l4), -1);
+    EXPECT_EQ(l3.absCompare(l4), 1);
+
+    LongMath l5(9), l6(-2);
+    EXPECT_TRUE(l6 < l5);
+    EXPECT_EQ(l5.compare(l6), 1);
+    EXPECT_EQ(l5.absCompare(l6), 1);
+
+    LongMath l7(-9), l8(-2);
+    EXPECT_TRUE(l7 < l8);
+    EXPECT_EQ(l7.compare(l8), -1);
+    EXPECT_EQ(l7.absCompare(l8), 1);
+
+    LongMath l9(-900000), l10(-900000);
+    EXPECT_FALSE(l9  < l10);
+    EXPECT_FALSE(l9  > l10);
+    EXPECT_TRUE(l9 == l10);
+    EXPECT_EQ(l9.compare(l10), 0);
+    EXPECT_EQ(l9.absCompare(l10), 0);
 }
 
-TEST(LongMath, SplitAndSumOdd)
+TEST(LongMath, Subtract)
 {
-    LongMath source(98765);
-    LongMath result(1052);
+    LongMath l1(-9), l2(-2), r1(-7);
+    EXPECT_EQ(r1, l1-l2);
 
-    EXPECT_EQ(result, source.splitAndSum(0, 1, 5));
+    LongMath l3(9), l4(-2), r2(11);
+    EXPECT_EQ(r2, l3-l4);
+
+    LongMath l5(-9), l6(2), r3(-11);
+    EXPECT_EQ(r3, l5-l6);
+ 
+    LongMath l7(9), l8(2), r4(7);
+    EXPECT_EQ(r4, l7-l8);
+   
+    LongMath l9(90000), l10(1000), r5(89000);
+    EXPECT_EQ(r5, l9-l10);
+    
+    LongMath l11(90000), l12(1), r6(89999);
+    EXPECT_EQ(r6, l11-l12);
+
+    LongMath l13(1000), l14(1), r7(999);
+    EXPECT_EQ(r7, l13-l14);
+  
+    LongMath l15(1000), l16(999), r8(1);
+    EXPECT_EQ(r8, l15-l16);
+}
+
+TEST(LongMath, IsZero)
+{
+   EXPECT_TRUE(LongMath(0).isZero());
+   EXPECT_FALSE(LongMath(1).isZero());
+   EXPECT_FALSE(LongMath(-1).isZero());
+   EXPECT_TRUE(LongMath("0").isZero());
+   EXPECT_TRUE(LongMath("0000").isZero());
 }
 
 TEST(LongMath, 12DigitsProduct)
 {
-/*
-    LongMath left_factor("123456789012");
+    /*LongMath left_factor("123456789012");
     LongMath right_factor("987654321098");
     LongMath result("121932631136585886175176");
     
-    test_mult(left_factor, right_factor, result, "12DigitsProduct");*/
+    test_mult(left_factor, right_factor, result, "12DigitsProduct");
+*/
 }
+
+TEST(LongMath, ManyProducts)
+{
+    //#pragma omp parallel for
+    /*for(int i = 0; i<2000; ++i)
+    {
+        for(int j = i; j<2000; ++j)
+        {
+            LongMath l1(i);
+            l1.karatsubaMultiplication(LongMath(j));
+
+            EXPECT_EQ(LongMath(i*j), l1);
+        }
+    }*/
+}
+
 

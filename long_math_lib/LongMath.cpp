@@ -2,13 +2,23 @@
 #include "LongMath.h"
 #include "Polynomial.h"
 
-// ******************************  public  ********************************
+#include <assert.h>
+
+
+void remove_trailing_zeros(LongMath::Buffer & v)
+{
+    auto it = std::find_if  ( v.rbegin()
+                             , v.rend()
+                             , [](char const & d ) { return d!=0; });
+        
+    if (it!=v.rbegin()) 
+    {
+        v.erase(it.base(), v.end());
+    }
+}
 
 LongMath LongMath::operator+ (const LongMath & lm) const
 {
-    if (lm.isNegative() != isNegative())
-        return this->operator-(lm);    
-
     LongMath new_lm(*this);
 
     const auto size_l = new_lm.value.size();
@@ -40,8 +50,51 @@ LongMath LongMath::operator+ (const LongMath & lm) const
 
 LongMath LongMath::operator- (const LongMath & lm) const
 {
-    // TODO:
-    return lm;   
+    LongMath res;
+    
+    if (isNegative() != lm.isNegative())
+    {
+        res = *this + lm;
+        res.setSign(sign);
+    }
+    else
+    {
+        LongMath const *left = this, *right = &lm;
+
+        if (left->absCompare(*right) == -1)
+        { 
+            left = &lm;
+            right = this;
+        }
+
+        res.setSign(left->getSign());
+
+        const auto size_l = left->value.size();
+        const auto size_r = right->value.size();
+        char carry = 0;
+
+        for (size_t i = 0; i < size_l; ++i)
+        {
+            char l = left->value[i] - carry;
+            char r = (i < size_r) ? right->value[i] : 0; 
+            
+            if (l < r)
+            {
+                l += 10;
+                carry = 1;
+            }
+            else
+            {
+                carry = 0;
+            }
+      
+            res.value.push_back(l - r);
+        }
+       
+        remove_trailing_zeros(res.value); 
+    }
+ 
+    return res;   
 }
 
 LongMath LongMath::operator* (const LongMath & right_factor) const
@@ -79,7 +132,112 @@ std::ostream & operator<<(std::ostream & os, LongMath const & lm)
         return os;
 }
 
-// ******************************  private  ********************************
+int8_t LongMath::compare(const LongMath & lm) const
+{
+    bool thisIsZero = this->isZero();
+    bool lmIsZero = lm.isZero();
+
+    if (thisIsZero && lmIsZero)
+    {
+        return 0;
+    }
+    else if (!thisIsZero && lmIsZero)
+    {
+        return isNegative() ? -1 : 1;
+    }
+    else if (thisIsZero && !lmIsZero)
+    {
+        return lm.isNegative() ? 1 : -1;
+    }
+    else if (this->isNegative() && !lm.isNegative())
+    {
+        return -1;
+    }
+    else if (!this->isNegative() && lm.isNegative())
+    {
+        return 1;
+    }
+    else if (this->value.size() < lm.value.size())
+    {
+        return this->isNegative() ? 1 : -1;
+    }
+    else if (this->value.size() > lm.value.size())
+    {
+        return this->isNegative() ? -1 : 1;
+    }
+    else
+    {
+        auto it1 = value.rbegin(), it2 = lm.value.rbegin();
+        
+        for(; it1!=value.rend(); ++it1, ++it2)
+        {
+            if (*it1 < *it2)
+            {
+                return this->isNegative() ? 1 : -1;
+            }
+            else if (*it1 > *it2)
+            {
+                return this->isNegative() ? -1 : 1;
+            }
+        }
+    }
+    
+    return 0;
+}
+
+int8_t LongMath::absCompare(const LongMath & lm) const
+{
+    bool thisIsZero = this->isZero();
+    bool lmIsZero = lm.isZero();
+
+    if (thisIsZero && lmIsZero)
+    {
+        return 0;
+    }
+    else if (!thisIsZero && lmIsZero)
+    {
+        return 1;
+    }
+    else if (thisIsZero && lmIsZero)
+    {
+        return -1;
+    }
+    else if (this->value.size() < lm.value.size())
+    {
+        return -1;
+    }
+    else if (this->value.size() > lm.value.size())
+    {
+        return 1;
+    }
+    else
+    {
+        auto it1 = value.rbegin(), it2 = lm.value.rbegin();
+        
+        for(; it1!=value.rend(); ++it1, ++it2)
+        {
+            if (*it1 < *it2)
+            {
+                return -1;
+            }
+            else if (*it1 > *it2)
+            {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+bool LongMath::operator< (const LongMath & lm) const
+{
+    return compare(lm) == -1;
+}
+
+bool LongMath::operator> (const LongMath & lm) const
+{
+    return compare(lm) == 1; 
+}
 
 const size_t LongMath::TRIGGER_STRASSEN;
 const size_t LongMath::TRIGGER_KARATSUBA;
@@ -93,9 +251,7 @@ void LongMath::standardMultiplication(const LongMath & factor)
     unsigned int index = 0;
     for (; index < factor.value.size(); ++index)
     {
-        LongMath tmp = (*this) * factor.value[index];
-        tmp.shift(index);
-
+        LongMath tmp = ((*this) * factor.value[index]) << index;
         result = result + tmp;
     }
 
@@ -117,6 +273,7 @@ void LongMath::strassenMultiplication(const LongMath & right_factor)
     // Normalize to 10 basis 
     LongMath result;
     uint8_t carry = 0;
+    
     for(size_t i = 0; i<p1.size(); ++i)
     {
         div_t d = div(round(p1[i]) + carry, 10);
@@ -130,28 +287,31 @@ void LongMath::strassenMultiplication(const LongMath & right_factor)
     }
     
     *this = result;
+    
+    remove_trailing_zeros(value);
 
     if(right_factor.isNegative())
             opposite();
 }
 
 void LongMath::karatsubaMultiplication(const LongMath & right_factor)
-{   
-    if (right_factor.isZero())
-    {
-        *this = right_factor;
-    }
-    else if (isZero())
-    {
-        return;
-    }
-    else
-    {
-        *this = karatsubaRecursive (*this, right_factor);
+{  
+        LongMath r(right_factor);
+        if (r.value.size() < value.size())
+        {
+            r.value.resize(value.size());
+        }
+        else if (r.value.size() > value.size())
+        {
+            value.resize(r.value.size());
+        }      
+ 
+        *this = karatsubaRecursive (*this, r);
         
         if(right_factor.isNegative())
             opposite();
-    }
+    
+        remove_trailing_zeros(value);
 }
 
 LongMath LongMath::karatsubaRecursive(const LongMath & left_factor, const LongMath & right_factor)
@@ -176,61 +336,33 @@ LongMath LongMath::karatsubaRecursive(const LongMath & left_factor, const LongMa
     size_t split_r = ceil(right_size / 2);
     size_t deg = floor(left_size / 2);
 
-    LongMath x1(left_factor.value.begin(), left_factor.value.begin() + split_l);
-    LongMath x2(left_factor.value.begin() + split_l, left_factor.value.end());
+    LongMath x2(left_factor.value.begin(), left_factor.value.begin() + split_l);
+    LongMath x1(left_factor.value.begin() + split_l, left_factor.value.end());
 
-    LongMath y1(right_factor.value.begin(), right_factor.value.begin() + split_r);
-    LongMath y2(right_factor.value.begin() + split_r, right_factor.value.end());
+    LongMath y2(right_factor.value.begin(), right_factor.value.begin() + split_r);
+    LongMath y1(right_factor.value.begin() + split_r, right_factor.value.end());
 
-    LongMath sum1 = x1 + x2;
-    LongMath sum2 = y1 + y2;
-
-    LongMath a = karatsubaRecursive(x1, y1) * pow10(2 * deg);
+    LongMath a = karatsubaRecursive(x1, y1);
     LongMath c = karatsubaRecursive(x2, y2);
-
-    return a + c  
-           + (karatsubaRecursive(sum1, sum2) /*- a - c*/) * pow10(deg);
+    
+    return  c + ((karatsubaRecursive(x1+x2, y1+y2) - a - c) << deg) + (a<< (2 * deg));
 }
 
-LongMath & LongMath::shift(int power)
+LongMath LongMath::operator<<(int power) const
 {
-    value.insert(value.end(), power, 0);
+    auto res = *this;
+    res.value.insert(res.value.end(), power, 0);
 
-    auto it = value.rbegin();
-    auto it_end = value.rend() - power;
+    auto it = res.value.rbegin();
+    auto it_end = res.value.rend() - power;
 
     for (; it != it_end; ++it)
     {
         std::swap(*it, *(it + power));
     }
 
-    return *this;
+    return res;
 }
-
-LongMath LongMath::splitAndSum(size_t min_index, size_t index, size_t max_index) const
-{
-    LongMath splitted;
-
-    const auto min_high_index = index + (max_index - min_index) % 2;
-    const auto size_h = max_index - min_high_index + 1;
-    const auto size_l = index - min_index + 1;
-    const auto splitted_size = std::max(size_l, size_h);
-    int carry = 0;
-
-    for (size_t i = 0; i < splitted_size || carry > 0; ++i)
-    {
-        const auto high = (i < size_h) ? value[min_high_index + i] : 0;
-        const auto low  = (i < size_l) ? value[min_index + i] : 0; 
-        
-        const div_t result = div(high + low + carry, 10);
-                
-        splitted.value.push_back(result.rem);
-        carry = result.quot;
-    }
-
-    return splitted;
-}
-
 
 LongMath LongMath::operator* (int right_factor) const
 {
@@ -240,13 +372,12 @@ LongMath LongMath::operator* (int right_factor) const
         return result;
     }
     
-    LongMath left_factor(*this);
-
     if (right_factor == 1)
     {
-        return left_factor;
+        return *this;
     }
 
+    LongMath left_factor(*this);
     multiply(left_factor.value, right_factor);
 
     return left_factor;
@@ -270,9 +401,15 @@ void multiply(LongMath::Buffer & left_factor, int right_factor)
     }
 }
 
-void LongMath::setFromInt(int val)
+void LongMath::setFromInt(int64_t val)
 {
-    if (val < 0)
+    if (val == 0)
+    {
+/*        sign = Sign::POS;
+        value.push_back(0);*/
+        return;
+    }
+    else if (val < 0)
     {
         val = -val;
         sign = Sign::NEG;
@@ -295,7 +432,8 @@ void LongMath::setFromString(std::string const & val)
 {
     if (val.empty())
     {
-        sign = Sign::POS;
+   /*     sign = Sign::POS;
+        value.push_back(0);*/
         return;
     }
 
@@ -314,6 +452,9 @@ void LongMath::setFromString(std::string const & val)
 
     for (; it != it_end; ++it)
     {
+        if (!isdigit(*it))
+            throw std::invalid_argument("Not a digit");
+
         value.push_back(*it - 48);
     }
 }
